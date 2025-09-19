@@ -21,7 +21,7 @@ A simple web-based tool to combine PDFs and images into a single PDF file with d
 
 ## Live Demo
 
-Visit the live demo at: [GitHub Pages URL will be here]
+Visit the live demo at: https://alltechdev.github.io/pdf-combiner
 
 ## Technical Details
 

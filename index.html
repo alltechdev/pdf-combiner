@@ -3,43 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Combiner</title>
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+    <title>Visual PDF Editor</title>
+
+    <!-- LIBRARIES -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js" defer></script>
+    
+    <!-- FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style type="text/css">
+        /* --- GLOBAL & START SCREEN STYLES --- */
+        :root {
+            --font-family: 'Inter', sans-serif;
+            --bg-main: #f8fafc;
+            --bg-sidebar: #ffffff;
+            --bg-page: #ffffff;
+            --border-color: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-placeholder: #94a3b8;
+            
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --success: #16a34a;
+            --success-hover: #15803d;
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
+            --danger-outline-hover: #fef2f2;
+            --secondary-outline-hover: #f1f5f9;
+
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --radius: 0.5rem;
         }
 
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { height: 100%; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: var(--font-family);
+            color: var(--text-primary);
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            overflow: hidden; /* Hide scrollbars for the full-page layout */
+        }
+        .hidden { display: none !important; }
+
+        /* --- START SCREEN --- */
+        #start-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
             padding: 20px;
         }
-
-        .container {
-            max-width: 1000px;
+        .start-container {
+            max-width: 800px;
+            width: 100%;
             margin: 0 auto;
             background: white;
             border-radius: 10px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             overflow: hidden;
         }
-
-        .header {
+        .start-header {
             background: #2c3e50;
             color: white;
-            padding: 20px;
+            padding: 2rem;
             text-align: center;
         }
-
-        .header h1 {
-            margin-bottom: 10px;
-        }
-
-        .drop-zone {
+        .start-header h1 { margin-bottom: 10px; font-size: 2rem; }
+        .start-header p { font-size: 1rem; opacity: 0.9; }
+        .start-drop-zone {
             border: 3px dashed #bdc3c7;
             border-radius: 10px;
             margin: 20px;
@@ -48,215 +86,200 @@
             background: #f8f9fa;
             transition: all 0.3s ease;
         }
-
-        .drop-zone.dragover {
-            border-color: #3498db;
-            background: #e3f2fd;
-        }
-
-        .drop-zone-text {
-            font-size: 18px;
-            color: #7f8c8d;
-            margin-bottom: 20px;
-        }
-
-        .file-input-btn {
-            background: #3498db;
+        .start-drop-zone.dragover { border-color: var(--primary); background: #f0efff; }
+        .start-drop-zone-text { font-size: 18px; color: #7f8c8d; margin-bottom: 20px; }
+        .start-file-btn {
+            background: var(--primary);
             color: white;
             padding: 12px 24px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             font-size: 16px;
+            font-weight: 600;
             transition: background 0.3s ease;
         }
+        .start-file-btn:hover { background: var(--primary-hover); }
 
-        .file-input-btn:hover {
-            background: #2980b9;
+        /* --- MAIN EDITOR LAYOUT --- */
+        .app-container { display: flex; height: 100vh; background-color: var(--bg-main); }
+        .sidebar {
+            width: 260px; background: var(--bg-sidebar); border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column; flex-shrink: 0;
         }
+        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        .sidebar-header h2 { font-size: 1.125rem; font-weight: 600; }
+        .sidebar-content { padding: 1rem; overflow-y: auto; }
+        .sidebar-content .placeholder { color: var(--text-placeholder); font-size: 0.875rem; }
+        .source-file-item {
+            padding: 0.75rem; border-radius: 0.375rem; margin-bottom: 0.5rem;
+            background: var(--bg-main); border: 1px solid var(--border-color);
+            font-size: 0.875rem; font-weight: 500;
+        }
+        .main-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .main-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color);
+            background-color: var(--bg-sidebar); flex-shrink: 0;
+        }
+        .main-title { font-size: 1.25rem; font-weight: 600; }
+        .main-actions { display: flex; gap: 0.75rem; }
 
-        .file-list {
-            margin: 20px;
-            min-height: 200px;
+        /* --- PAGE GRID & EDITOR DROP ZONE --- */
+        .page-grid-container { flex: 1; overflow-y: auto; padding: 1.5rem; }
+        .page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1.5rem; }
+        .drop-zone {
+            grid-column: 1 / -1; /* Span all columns */
+            border: 2px dashed var(--border-color); border-radius: var(--radius);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 3rem; color: var(--text-placeholder); text-align: center;
+            transition: background-color 0.2s, border-color 0.2s;
         }
+        .main-view.dragover .drop-zone { background-color: #f0fdf4; border-color: var(--success); }
+        .drop-zone .drop-icon { color: #cbd5e1; margin-bottom: 1rem; }
 
-        .file-item {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 5px;
-            padding: 15px;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            cursor: move;
-            transition: all 0.3s ease;
+        /* --- PAGE THUMBNAIL --- */
+        .page-item {
+            position: relative; cursor: pointer; border-radius: var(--radius);
+            background: var(--bg-page); box-shadow: var(--shadow-sm);
+            border: 2px solid transparent;
+            transition: all 0.2s ease-in-out;
         }
+        .page-item:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+        .page-item.selected { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.4); }
+        .page-canvas { width: 100%; height: auto; display: block; border-radius: calc(var(--radius) - 2px); }
+        .page-checkbox { position: absolute; top: 0.75rem; left: 0.75rem; width: 1.25rem; height: 1.25rem; z-index: 10; }
+        .page-order-input { position: absolute; bottom: 0.5rem; right: 0.5rem; width: 40px; height: 26px; border: 1px solid var(--border-color); border-radius: 0.375rem; text-align: center; font-size: 0.875rem; font-weight: 500; z-index: 10; }
+        .delete-page-btn { position: absolute; top: 0.5rem; right: 0.5rem; width: 28px; height: 28px; background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transform: scale(0.8); transition: all 0.2s ease-in-out; z-index: 10; }
+        .page-item:hover .delete-page-btn { opacity: 1; transform: scale(1); }
+        .delete-page-btn:hover { color: var(--danger); background-color: var(--danger-outline-hover); }
 
-        .file-item:hover {
-            background: #e9ecef;
-        }
+        /* --- CONTEXTUAL FOOTER --- */
+        .contextual-footer { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); background-color: var(--bg-sidebar); flex-shrink: 0; transform: translateY(100%); transition: transform 0.3s ease-in-out; }
+        .contextual-footer.visible { transform: translateY(0); }
+        .selection-info, .selection-actions { display: flex; align-items: center; gap: 0.75rem; }
+        #selection-count { font-size: 0.875rem; color: var(--text-secondary); font-weight: 500; }
 
-        .file-item.dragging {
-            opacity: 0.5;
-        }
+        /* --- BUTTONS --- */
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 0.375rem; border: 1px solid transparent; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .btn:disabled { cursor: not-allowed; opacity: 0.6; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover:not(:disabled) { background: var(--success-hover); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover:not(:disabled) { background: var(--danger-hover); }
+        .btn-secondary { background: var(--bg-main); border-color: var(--border-color); }
+        .btn-secondary:hover:not(:disabled) { background-color: var(--secondary-outline-hover); }
+        .btn-danger-outline { background: transparent; color: var(--danger); border-color: var(--danger); }
+        .btn-danger-outline:hover:not(:disabled) { background-color: var(--danger-outline-hover); }
+        .btn-secondary-outline { background: transparent; color: var(--text-secondary); border-color: var(--border-color); }
+        .btn-secondary-outline:hover:not(:disabled) { background-color: var(--secondary-outline-hover); }
 
-        .file-info {
-            display: flex;
-            align-items: center;
-            flex: 1;
-        }
+        /* Export Button Group */
+        .export-group { position: relative; display: flex; }
+        .export-group .btn { border-radius: 0; }
+        .export-group .btn:first-child { border-top-left-radius: 0.375rem; border-bottom-left-radius: 0.375rem; }
+        .export-group .export-dropdown-toggle { border-top-right-radius: 0.375rem; border-bottom-right-radius: 0.375rem; border-left: 1px solid rgba(255, 255, 255, 0.3); padding: 0.5rem 0.5rem; }
+        .export-dropdown-menu { position: absolute; bottom: 100%; right: 0; margin-bottom: 0.5rem; background: var(--bg-sidebar); border-radius: var(--radius); box-shadow: var(--shadow-md); border: 1px solid var(--border-color); width: 120px; z-index: 20; }
+        .export-dropdown-menu a { display: block; padding: 0.75rem 1rem; font-size: 0.875rem; text-decoration: none; color: var(--text-primary); }
+        .export-dropdown-menu a:hover { background: var(--bg-main); }
+        .export-dropdown-menu a:first-child { border-top-left-radius: var(--radius); border-top-right-radius: var(--radius); }
+        .export-dropdown-menu a:last-child { border-bottom-left-radius: var(--radius); border-bottom-right-radius: var(--radius); }
 
-        .file-icon {
-            width: 40px;
-            height: 40px;
-            margin-right: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 5px;
-            font-weight: bold;
-            color: white;
-        }
-
-        .pdf-icon {
-            background: #e74c3c;
-        }
-
-        .img-icon {
-            background: #2ecc71;
-        }
-
-        .file-details {
-            flex: 1;
-        }
-
-        .file-name {
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .file-size {
-            color: #7f8c8d;
-            font-size: 14px;
-        }
-
-        .file-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-
-        .btn-danger {
-            background: #e74c3c;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #c0392b;
-        }
-
-        .combine-section {
-            padding: 20px;
-            border-top: 1px solid #e9ecef;
-            background: #f8f9fa;
-            text-align: center;
-        }
-
-        .combine-btn {
-            background: #27ae60;
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 5px;
-            font-size: 18px;
-            cursor: pointer;
-            transition: background 0.3s ease;
-            margin-right: 10px;
-        }
-
-        .combine-btn:hover:not(:disabled) {
-            background: #229954;
-        }
-
-        .combine-btn:disabled {
-            background: #95a5a6;
-            cursor: not-allowed;
-        }
-
-        .clear-btn {
-            background: #e74c3c;
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 5px;
-            font-size: 18px;
-            cursor: pointer;
-            transition: background 0.3s ease;
-        }
-
-        .clear-btn:hover {
-            background: #c0392b;
-        }
-
-        .progress {
-            margin-top: 20px;
-            text-align: center;
-            display: none;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        .drag-handle {
-            color: #bdc3c7;
-            margin-right: 10px;
-            cursor: grab;
-        }
-
-        .drag-handle:active {
-            cursor: grabbing;
-        }
+        /* --- LOADER --- */
+        .loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.8); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .loader-content { text-align: center; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #loader-text { font-size: 1.1rem; color: #555; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>PDF Combiner</h1>
-            <p>Drag and drop PDFs and images to combine them into one PDF</p>
-        </div>
 
-        <div class="drop-zone" id="dropZone">
-            <div class="drop-zone-text">
-                Drag and drop PDF files and images here
+    <!-- START SCREEN (Initially Visible) -->
+    <div id="start-screen">
+        <div class="start-container">
+            <div class="start-header">
+                <h1>Visual PDF Editor</h1>
+                <p>Combine, reorder, and edit pages from PDFs and images.</p>
             </div>
-            <button class="file-input-btn" onclick="document.getElementById('fileInput').click()">
-                Choose Files
-            </button>
-            <input type="file" id="fileInput" class="hidden" multiple accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp">
-        </div>
-
-        <div class="file-list" id="fileList">
-        </div>
-
-        <div class="combine-section">
-            <button class="combine-btn" id="combineBtn" disabled>Combine PDFs</button>
-            <button class="clear-btn" id="clearBtn">Clear All</button>
-            <div class="progress" id="progress">
-                <p>Processing files...</p>
+            <div class="start-drop-zone" id="startDropZone">
+                <div class="start-drop-zone-text">
+                    Drag and drop PDF files and images here
+                </div>
+                <button class="start-file-btn" id="startChooseFileBtn">
+                    Choose Files
+                </button>
             </div>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <!-- MAIN APP EDITOR (Initially Hidden) -->
+    <div class="app-container hidden">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>Source Files</h2>
+            </div>
+            <div id="sourceFileList" class="sidebar-content">
+                <p class="placeholder">Add files to begin.</p>
+            </div>
+        </aside>
+
+        <main class="main-view" id="main-view">
+            <header class="main-header">
+                <h1 class="main-title">Workspace</h1>
+                <div class="main-actions">
+                    <button class="btn btn-secondary" id="sortByNumberBtn">Sort by Number</button>
+                    <button class="btn btn-danger-outline" id="clearBtn">Clear Workspace</button>
+                    <button class="btn btn-primary" id="addFilesBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Add More Files
+                    </button>
+                    <input type="file" id="fileInput" class="hidden" multiple accept=".pdf,.jpg,.jpeg,.png">
+                </div>
+            </header>
+
+            <div class="page-grid-container" id="page-grid-container">
+                <div class="page-grid" id="page-grid">
+                    <!-- Page thumbnails will be injected here by JS -->
+                </div>
+            </div>
+
+            <footer id="contextual-footer" class="contextual-footer">
+                <div class="selection-info">
+                    <button class="btn btn-secondary-outline" id="selectAllBtn">Select All</button>
+                    <button class="btn btn-secondary-outline" id="deselectAllBtn">Deselect All</button>
+                </div>
+                <div class="selection-actions">
+                    <span id="selection-count"></span>
+                    <button class="btn btn-danger" id="deleteSelectedBtn">Delete Selected</button>
+                    <div class="export-group">
+                        <button class="btn btn-success" id="saveBtn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                            Export
+                        </button>
+                        <button class="btn btn-success export-dropdown-toggle" id="exportDropdownToggle">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                        <div class="export-dropdown-menu hidden" id="exportDropdownMenu">
+                            <a href="#" id="previewBtn">Preview</a>
+                            <a href="#" id="printBtn">Print</a>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <div id="loader" class="loader-overlay hidden">
+        <div class="loader-content">
+            <div class="spinner"></div>
+            <p id="loader-text">Processing...</p>
+        </div>
+    </div>
+    
+    <iframe id="printFrame" class="hidden"></iframe>
+    <script src="app.js" defer></script>
 </body>
 </html>

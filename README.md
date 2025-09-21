@@ -14,6 +14,7 @@ A powerful, browser-based toolkit for visually merging, splitting, reordering, a
 -   **Delete Pages**: Easily remove unwanted pages with a single click or by selecting multiple pages and deleting them in bulk.
 -   **Precise Reordering**: Arrange pages visually with drag-and-drop or assign specific page numbers and sort the entire workspace instantly.
 -   **Multi-Format Support**: Works flawlessly with PDF, JPG, and PNG files.
+-   **Page Rotation**: Correct page orientation with ease. Rotate individual pages or multiple selected pages clockwise and counter-clockwise in 90-degree increments.
 -   **Export Options**:
     -   **Save**: Download your final PDF with a custom name.
     -   **Preview**: Open the generated PDF in a new tab to review it before saving.

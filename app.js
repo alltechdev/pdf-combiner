@@ -15,6 +15,7 @@ class VisualPDFTool {
         this.contextualFooter = document.getElementById('contextual-footer');
         this.selectionCount = document.getElementById('selection-count');
         this.deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+        this.rotateSelectedBtn = document.getElementById('rotateSelectedBtn'); // New element
         this.sortByNumberBtn = document.getElementById('sortByNumberBtn');
         this.clearBtn = document.getElementById('clearBtn');
         this.saveBtn = document.getElementById('saveBtn');
@@ -64,6 +65,7 @@ class VisualPDFTool {
         
         this.saveBtn.addEventListener('click', () => this.createPdf());
         this.deleteSelectedBtn.addEventListener('click', () => this.deleteSelectedPages());
+        this.rotateSelectedBtn.addEventListener('click', () => this.rotateSelectedPages(90)); // New listener
         this.previewBtn.addEventListener('click', (e) => { e.preventDefault(); this.previewPdf(); });
         this.printBtn.addEventListener('click', (e) => { e.preventDefault(); this.printPdf(); });
 
@@ -92,12 +94,9 @@ class VisualPDFTool {
     async addFiles(files) {
         if (files.length === 0) return;
 
-        // ** VIEW SWITCH LOGIC **
-        // If this is the first time files are added, switch to the editor view.
         if (this.pages.length === 0) {
             this.startScreen.classList.add('hidden');
             this.appContainer.classList.remove('hidden');
-            // Change body background for the editor view
             document.body.style.background = 'var(--bg-main)'; 
         }
 
@@ -110,7 +109,7 @@ class VisualPDFTool {
             this.sourceFiles.push(sourceFile);
             if (file.type.startsWith('image/')) {
                 const pageId = `page_${fileId}_0`;
-                const pageData = { id: pageId, sourceFile, sourcePageIndex: 0, type: 'image' };
+                const pageData = { id: pageId, sourceFile, sourcePageIndex: 0, type: 'image', rotation: 0 };
                 this.pages.push(pageData);
                 this.renderPageThumbnail(pageData, pageCounter++);
             } else if (file.type === 'application/pdf') {
@@ -120,7 +119,7 @@ class VisualPDFTool {
                     sourceFile.pdfLibDoc = await PDFLib.PDFDocument.load(arrayBuffer);
                     for (let i = 1; i <= sourceFile.pdfDoc.numPages; i++) {
                         const pageId = `page_${fileId}_${i - 1}`;
-                        const pageData = { id: pageId, sourceFile, sourcePageIndex: i - 1, type: 'pdf' };
+                        const pageData = { id: pageId, sourceFile, sourcePageIndex: i - 1, type: 'pdf', rotation: 0 };
                         this.pages.push(pageData);
                         this.renderPageThumbnail(pageData, pageCounter++);
                     }
@@ -145,19 +144,45 @@ class VisualPDFTool {
         checkbox.addEventListener('click', (e) => { e.stopPropagation(); this.toggleSelection(pageData.id); });
         pageItem.appendChild(checkbox);
 
+        // --- Create Action Buttons Structure ---
+        const topActions = document.createElement('div');
+        topActions.className = 'page-top-actions';
         const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-page-btn';
+        deleteBtn.className = 'delete-page-btn page-action-btn';
         deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
         deleteBtn.title = 'Delete this page';
-        pageItem.appendChild(deleteBtn);
+        topActions.appendChild(deleteBtn);
+        pageItem.appendChild(topActions);
+
+        const bottomActions = document.createElement('div');
+        bottomActions.className = 'page-bottom-actions';
+
+        const rotationControls = document.createElement('div');
+        rotationControls.className = 'page-rotation-controls';
+        
+        const rotateCCWBtn = document.createElement('button');
+        rotateCCWBtn.className = 'page-action-btn rotate-ccw-btn';
+        rotateCCWBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" style="transform: scaleX(-1);" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.66 15.57a10 10 0 1 0 .57-8.38"/></svg>';
+        rotateCCWBtn.title = 'Rotate Counter-Clockwise';
+        
+        const rotateCWBtn = document.createElement('button');
+        rotateCWBtn.className = 'page-action-btn rotate-cw-btn';
+        rotateCWBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/></svg>';
+        rotateCWBtn.title = 'Rotate Clockwise';
+
+        rotationControls.appendChild(rotateCCWBtn);
+        rotationControls.appendChild(rotateCWBtn);
 
         const orderInput = document.createElement('input');
         orderInput.type = 'number';
         orderInput.className = 'page-order-input';
         orderInput.value = index + 1;
         orderInput.addEventListener('click', (e) => e.stopPropagation());
-        pageItem.appendChild(orderInput);
 
+        bottomActions.appendChild(rotationControls);
+        bottomActions.appendChild(orderInput);
+        pageItem.appendChild(bottomActions);
+        
         this.pageGrid.appendChild(pageItem);
 
         try {
@@ -170,7 +195,7 @@ class VisualPDFTool {
         } catch (e) { console.error('Error rendering thumbnail:', e); pageItem.style.border = '2px solid red'; }
     }
 
-    // --- Page Interaction (Selection, Deletion, Sorting) ---
+    // --- Page Interaction (Selection, Deletion, Sorting, Rotation) ---
     toggleSelection(pageId) {
         if (this.selectedPageIds.has(pageId)) { this.selectedPageIds.delete(pageId); } else { this.selectedPageIds.add(pageId); }
         this.lastSelectedId = pageId;
@@ -181,7 +206,12 @@ class VisualPDFTool {
     handlePageClick(e) {
         const pageItem = e.target.closest('.page-item');
         if (!pageItem) return;
+        
+        // Handle action buttons first
         if (e.target.closest('.delete-page-btn')) { this.deletePages([pageItem.dataset.id]); return; }
+        if (e.target.closest('.rotate-cw-btn')) { this.rotatePages([pageItem.dataset.id], 90); return; }
+        if (e.target.closest('.rotate-ccw-btn')) { this.rotatePages([pageItem.dataset.id], -90); return; }
+
         const pageId = pageItem.dataset.id;
         if (e.shiftKey && this.lastSelectedId) {
             const pageElements = [...this.pageGrid.querySelectorAll('.page-item')];
@@ -233,6 +263,25 @@ class VisualPDFTool {
         }
     }
 
+    rotatePages(pageIds, angle) {
+        pageIds.forEach(id => {
+            const page = this.pages.find(p => p.id === id);
+            if (page) {
+                page.rotation = (page.rotation + angle + 360) % 360;
+                const pageItem = this.pageGrid.querySelector(`.page-item[data-id="${id}"]`);
+                if (pageItem) {
+                    const canvas = pageItem.querySelector('.page-canvas');
+                    canvas.style.transform = `rotate(${page.rotation}deg)`;
+                }
+            }
+        });
+    }
+
+    rotateSelectedPages(angle) {
+        if (this.selectedPageIds.size === 0) return;
+        this.rotatePages(Array.from(this.selectedPageIds), angle);
+    }
+
     sortByNumber() {
         this.showLoader(true, 'Sorting pages...');
         const sortedElements = [...this.pageGrid.querySelectorAll('.page-item')].sort((a, b) => {
@@ -274,10 +323,26 @@ class VisualPDFTool {
                 if (pageData.type === 'image') {
                     const arrayBuffer = await pageData.sourceFile.file.arrayBuffer();
                     const image = pageData.sourceFile.type.includes('jpeg') ? await newPdfDoc.embedJpg(arrayBuffer) : await newPdfDoc.embedPng(arrayBuffer);
-                    const page = newPdfDoc.addPage([image.width, image.height]);
-                    page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+                    
+                    const { width, height } = image;
+                    const rotation = pageData.rotation;
+                    
+                    const page = newPdfDoc.addPage(
+                        rotation === 90 || rotation === 270 ? [height, width] : [width, height]
+                    );
+    
+                    if (rotation === 90) page.translate(height, 0);
+                    else if (rotation === 180) page.translate(width, height);
+                    else if (rotation === 270) page.translate(0, width);
+    
+                    page.rotate(PDFLib.degrees(rotation));
+                    page.drawImage(image, { x: 0, y: 0, width: width, height: height });
+
                 } else {
                     const [copiedPage] = await newPdfDoc.copyPages(pageData.sourceFile.pdfLibDoc, [pageData.sourcePageIndex]);
+                    const existingRotation = copiedPage.getRotation().angle;
+                    const newRotation = (existingRotation + pageData.rotation) % 360;
+                    copiedPage.setRotation(PDFLib.degrees(newRotation));
                     newPdfDoc.addPage(copiedPage);
                 }
             }
@@ -362,8 +427,6 @@ class VisualPDFTool {
         this.updateSourceFileList(); 
         this.updateStatus();
         
-        // ** VIEW SWITCH LOGIC **
-        // Switch back to the start screen
         this.startScreen.classList.remove('hidden');
         this.appContainer.classList.add('hidden');
         document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';

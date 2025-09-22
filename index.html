@@ -58,7 +58,7 @@
             align-items: center;
             justify-content: center;
             height: 100vh;
-            padding: 20px;
+            padding: 1rem;
         }
         .start-container {
             max-width: 800px;
@@ -72,22 +72,22 @@
         .start-header {
             background: #2c3e50;
             color: white;
-            padding: 2rem;
+            padding: 1.5rem;
             text-align: center;
         }
-        .start-header h1 { margin-bottom: 10px; font-size: 2rem; }
+        .start-header h1 { margin-bottom: 10px; font-size: 1.75rem; }
         .start-header p { font-size: 1rem; opacity: 0.9; }
         .start-drop-zone {
             border: 3px dashed #bdc3c7;
             border-radius: 10px;
-            margin: 20px;
-            padding: 60px 20px;
+            margin: 1rem;
+            padding: 3rem 1rem;
             text-align: center;
             background: #f8f9fa;
             transition: all 0.3s ease;
         }
         .start-drop-zone.dragover { border-color: var(--primary); background: #f0efff; }
-        .start-drop-zone-text { font-size: 18px; color: #7f8c8d; margin-bottom: 20px; }
+        .start-drop-zone-text { font-size: 1rem; color: #7f8c8d; margin-bottom: 20px; }
         .start-file-btn {
             background: var(--primary);
             color: white;
@@ -95,19 +95,23 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 1rem;
             font-weight: 600;
             transition: background 0.3s ease;
         }
         .start-file-btn:hover { background: var(--primary-hover); }
 
         /* --- MAIN EDITOR LAYOUT --- */
-        .app-container { display: flex; height: 100vh; background-color: var(--bg-main); }
+        .app-container { display: flex; height: 100vh; background-color: var(--bg-main); position: relative; overflow-x: hidden; }
         .sidebar {
             width: 260px; background: var(--bg-sidebar); border-right: 1px solid var(--border-color);
             display: flex; flex-direction: column; flex-shrink: 0;
+            transition: transform 0.3s ease-in-out;
         }
-        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        .sidebar-header { 
+            padding: 1.5rem; border-bottom: 1px solid var(--border-color); flex-shrink: 0; 
+            display: flex; justify-content: space-between; align-items: center;
+        }
         .sidebar-header h2 { font-size: 1.125rem; font-weight: 600; }
         .sidebar-content { padding: 1rem; overflow-y: auto; }
         .sidebar-content .placeholder { color: var(--text-placeholder); font-size: 0.875rem; }
@@ -116,7 +120,7 @@
             background: var(--bg-main); border: 1px solid var(--border-color);
             font-size: 0.875rem; font-weight: 500;
         }
-        .main-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .main-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
         .main-header {
             display: flex; justify-content: space-between; align-items: center;
             padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color);
@@ -194,6 +198,7 @@
         .btn-danger-outline:hover:not(:disabled) { background-color: var(--danger-outline-hover); }
         .btn-secondary-outline { background: transparent; color: var(--text-secondary); border-color: var(--border-color); }
         .btn-secondary-outline:hover:not(:disabled) { background-color: var(--secondary-outline-hover); }
+        .btn-icon { padding: 0.5rem; line-height: 1; } /* For icon-only buttons like hamburger/close */
 
         /* Export Button Group */
         .export-group { position: relative; display: flex; }
@@ -212,10 +217,74 @@
         .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #loader-text { font-size: 1.1rem; color: #555; }
+        
+        /* --- RESPONSIVE & MOBILE STYLES --- */
+        #menu-toggle-btn, #sidebar-close-btn { display: none; }
+        #sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 99;
+            opacity: 0; visibility: hidden; transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .sidebar-mobile-open #sidebar-overlay { opacity: 1; visibility: visible; }
+
+        /* Tablets and below */
+        @media (max-width: 1024px) {
+            #menu-toggle-btn { display: inline-flex; }
+            #sidebar-close-btn { display: inline-flex; }
+            
+            .sidebar {
+                position: fixed;
+                top: 0; left: 0; height: 100%;
+                z-index: 100;
+                transform: translateX(-100%);
+                box-shadow: var(--shadow-md);
+                border-right: none;
+            }
+            .sidebar-mobile-open .sidebar {
+                transform: translateX(0);
+            }
+            .main-header { gap: 1rem; }
+        }
+
+        /* Mobile phones */
+        @media (max-width: 767px) {
+            .start-header h1 { font-size: 1.5rem; }
+            .start-drop-zone { padding: 2rem 1rem; }
+
+            .main-header {
+                flex-wrap: wrap;
+                padding: 1rem;
+            }
+            .main-title { 
+                font-size: 1.125rem; 
+                width: calc(100% - 50px); /* Leave space for menu button */
+            }
+            .main-actions { 
+                flex-wrap: wrap;
+                width: 100%;
+                margin-top: 1rem;
+            }
+
+            .page-grid-container { padding: 1rem; }
+            .page-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 1rem; }
+            
+            .contextual-footer {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 1rem;
+            }
+            .selection-info, .selection-actions {
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
+            .export-group { width: 100%; justify-content: stretch; }
+            .export-group > .btn { flex-grow: 1; }
+        }
     </style>
 </head>
 <body>
-
+    <div id="sidebar-overlay" class="hidden"></div>
+    
     <!-- START SCREEN (Initially Visible) -->
     <div id="start-screen">
         <div class="start-container">
@@ -240,6 +309,9 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <h2>Source Files</h2>
+                <button class="btn-icon btn-secondary-outline" id="sidebar-close-btn" title="Close menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
             </div>
             <div id="sourceFileList" class="sidebar-content">
                 <p class="placeholder">Add files to begin.</p>
@@ -248,6 +320,9 @@
 
         <main class="main-view" id="main-view">
             <header class="main-header">
+                <button class="btn btn-icon btn-secondary-outline" id="menu-toggle-btn" title="Open menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                </button>
                 <h1 class="main-title">Workspace</h1>
                 <div class="main-actions">
                     <button class="btn btn-secondary" id="sortByNumberBtn">Sort by Number</button>

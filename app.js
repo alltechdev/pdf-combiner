@@ -4,8 +4,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs
 class VisualPDFTool {
     constructor() {
         // Data stores
-        this.sourceFiles = []; 
-        this.pages = [];       
+        this.sourceFiles = [];
+        this.pages = [];
         this.selectedPageIds = new Set();
         this.lastSelectedId = null;
 
@@ -15,7 +15,7 @@ class VisualPDFTool {
         this.contextualFooter = document.getElementById('contextual-footer');
         this.selectionCount = document.getElementById('selection-count');
         this.deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
-        this.rotateSelectedBtn = document.getElementById('rotateSelectedBtn'); // New element
+        this.rotateSelectedBtn = document.getElementById('rotateSelectedBtn');
         this.sortByNumberBtn = document.getElementById('sortByNumberBtn');
         this.clearBtn = document.getElementById('clearBtn');
         this.saveBtn = document.getElementById('saveBtn');
@@ -29,6 +29,12 @@ class VisualPDFTool {
         this.startDropZone = document.getElementById('startDropZone');
         this.startChooseFileBtn = document.getElementById('startChooseFileBtn');
         this.appContainer = document.querySelector('.app-container');
+
+        // Responsive UI Elements
+        this.menuToggleBtn = document.getElementById('menu-toggle-btn');
+        this.sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+        this.sidebarOverlay = document.getElementById('sidebar-overlay');
+
 
         this.init();
     }
@@ -49,6 +55,11 @@ class VisualPDFTool {
     }
 
     initEventListeners() {
+        // --- Responsive Menu Listeners ---
+        this.menuToggleBtn.addEventListener('click', () => this.toggleSidebar(true));
+        this.sidebarCloseBtn.addEventListener('click', () => this.toggleSidebar(false));
+        this.sidebarOverlay.addEventListener('click', () => this.toggleSidebar(false));
+
         // --- Start Screen Listeners ---
         this.startChooseFileBtn.addEventListener('click', () => document.getElementById('fileInput').click());
         this.startDropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); this.startDropZone.classList.add('dragover'); });
@@ -65,7 +76,7 @@ class VisualPDFTool {
         
         this.saveBtn.addEventListener('click', () => this.createPdf());
         this.deleteSelectedBtn.addEventListener('click', () => this.deleteSelectedPages());
-        this.rotateSelectedBtn.addEventListener('click', () => this.rotateSelectedPages(90)); // New listener
+        this.rotateSelectedBtn.addEventListener('click', () => this.rotateSelectedPages(90));
         this.previewBtn.addEventListener('click', (e) => { e.preventDefault(); this.previewPdf(); });
         this.printBtn.addEventListener('click', (e) => { e.preventDefault(); this.printPdf(); });
 
@@ -82,6 +93,12 @@ class VisualPDFTool {
         this.mainView.addEventListener('dragleave', this.handleDragLeave.bind(this));
         this.mainView.addEventListener('drop', this.handleDrop.bind(this));
         this.pageGrid.addEventListener('click', this.handlePageClick.bind(this));
+    }
+    
+    // --- Responsive UI Method ---
+    toggleSidebar(show) {
+        this.appContainer.classList.toggle('sidebar-mobile-open', show);
+        this.sidebarOverlay.classList.toggle('hidden', !show);
     }
 
     // --- File Handling & Rendering ---
@@ -149,6 +166,7 @@ class VisualPDFTool {
         topActions.className = 'page-top-actions';
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'delete-page-btn page-action-btn';
+        // FIX #1: Removed the typo "a" from the viewBox attribute
         deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
         deleteBtn.title = 'Delete this page';
         topActions.appendChild(deleteBtn);
@@ -330,13 +348,32 @@ class VisualPDFTool {
                     const page = newPdfDoc.addPage(
                         rotation === 90 || rotation === 270 ? [height, width] : [width, height]
                     );
-    
-                    if (rotation === 90) page.translate(height, 0);
-                    else if (rotation === 180) page.translate(width, height);
-                    else if (rotation === 270) page.translate(0, width);
-    
-                    page.rotate(PDFLib.degrees(rotation));
-                    page.drawImage(image, { x: 0, y: 0, width: width, height: height });
+
+                    // --- FIX #2: Complete rewrite of image rotation logic ---
+                    // The rotation and positioning is passed directly to drawImage
+                    const drawOptions = {
+                        width: width,
+                        height: height,
+                        rotate: PDFLib.degrees(rotation),
+                    };
+
+                    // The coordinate system's origin (0,0) changes based on rotation.
+                    // We must adjust x and y to compensate.
+                    if (rotation === 90) {
+                        drawOptions.x = height;
+                        drawOptions.y = 0;
+                    } else if (rotation === 180) {
+                        drawOptions.x = width;
+                        drawOptions.y = height;
+                    } else if (rotation === 270) {
+                        drawOptions.x = 0;
+                        drawOptions.y = width;
+                    } else { // 0 or 360 degrees
+                        drawOptions.x = 0;
+                        drawOptions.y = 0;
+                    }
+
+                    page.drawImage(image, drawOptions);
 
                 } else {
                     const [copiedPage] = await newPdfDoc.copyPages(pageData.sourceFile.pdfLibDoc, [pageData.sourcePageIndex]);
